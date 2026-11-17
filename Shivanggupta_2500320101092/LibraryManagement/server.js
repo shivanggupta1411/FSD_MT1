@@ -4,7 +4,6 @@ const express = require("express");
 const app = express();
 const PORT = 3000;
 
-// Middleware
 app.use(express.json());
 
 // Initial book records
@@ -36,78 +35,79 @@ let books = [
 ];
 
 // Validate book data
-function validateBook(data) {
+function validateBook(book) {
     return (
-        data &&
-        typeof data.title === "string" && data.title.trim() !== "" &&
-        typeof data.author === "string" && data.author.trim() !== "" &&
-        typeof data.genre === "string" && data.genre.trim() !== "" &&
-        typeof data.publishedYear === "number" &&
-        Number.isInteger(data.publishedYear) &&
-        data.publishedYear > 0 &&
-        typeof data.available === "boolean"
+        book &&
+        typeof book.title === "string" &&
+        book.title.trim() !== "" &&
+        typeof book.author === "string" &&
+        book.author.trim() !== "" &&
+        typeof book.genre === "string" &&
+        book.genre.trim() !== "" &&
+        Number.isInteger(book.publishedYear) &&
+        book.publishedYear > 0 &&
+        typeof book.available === "boolean"
     );
 }
 
-// 1. GET ALL BOOKS
+// GET: Retrieve all books
 app.get("/api/books", (req, res) => {
     res.status(200).json(books);
 });
 
-// 2. POST - ADD NEW BOOK
+// POST: Add a new book
 app.post("/api/books", (req, res) => {
-    const data = req.body;
+    const newBook = req.body;
 
-    if (!validateBook(data)) {
+    if (!validateBook(newBook)) {
         return res.status(400).json({
-            message: "Invalid book data. Please provide all required fields."
+            message: "Invalid book data. Check all required fields."
         });
     }
 
-    const newId = Math.max(100, ...books.map(book => book.id)) + 1;
-
-    const newBook = {
-        id: newId,
-        title: data.title.trim(),
-        author: data.author.trim(),
-        genre: data.genre.trim(),
-        publishedYear: data.publishedYear,
-        available: data.available
+    const book = {
+        id: books.length
+            ? Math.max(...books.map(b => b.id)) + 1
+            : 1,
+        title: newBook.title.trim(),
+        author: newBook.author.trim(),
+        genre: newBook.genre.trim(),
+        publishedYear: newBook.publishedYear,
+        available: newBook.available
     };
 
-    books.push(newBook);
+    books.push(book);
 
     res.status(201).json({
         message: "Book added successfully",
-        book: newBook
+        book
     });
 });
 
-// 3. FILTER BOOKS BY AUTHOR
-// This route must come before /:id
+// GET: Filter books by author
 app.get("/api/books/filter", (req, res) => {
     const author = req.query.author;
 
-    if (typeof author !== "string" || author.trim() === "") {
+    if (!author) {
         return res.status(400).json({
-            message: "Author query parameter is required"
+            message: "Please provide an author query parameter."
         });
     }
 
     const filteredBooks = books.filter(book =>
-        book.author.toLowerCase() === author.trim().toLowerCase()
+        book.author.toLowerCase().includes(author.toLowerCase())
     );
 
     res.status(200).json(filteredBooks);
 });
 
-// 4. GET BOOK BY ID
+// GET: Retrieve a book by ID
 app.get("/api/books/:id", (req, res) => {
     const id = Number(req.params.id);
 
     const book = books.find(book => book.id === id);
 
-    if (!Number.isInteger(id) || !book) {
+    if (!book) {
         return res.status(404).json({
             message: "Book not found"
         });
@@ -116,13 +116,13 @@ app.get("/api/books/:id", (req, res) => {
     res.status(200).json(book);
 });
 
-// 5. PUT - UPDATE BOOK
+// PUT: Update a book
 app.put("/api/books/:id", (req, res) => {
     const id = Number(req.params.id);
 
     const index = books.findIndex(book => book.id === id);
 
-    if (!Number.isInteger(id) || index === -1) {
+    if (index === -1) {
         return res.status(404).json({
             message: "Book not found"
         });
@@ -130,12 +130,12 @@ app.put("/api/books/:id", (req, res) => {
 
     if (!validateBook(req.body)) {
         return res.status(400).json({
-            message: "Invalid book data"
+            message: "Invalid book data. Check all required fields."
         });
     }
 
     books[index] = {
-        id: id,
+        id,
         title: req.body.title.trim(),
         author: req.body.author.trim(),
         genre: req.body.genre.trim(),
@@ -149,13 +149,13 @@ app.put("/api/books/:id", (req, res) => {
     });
 });
 
-// 6. DELETE BOOK
+// DELETE: Remove a book
 app.delete("/api/books/:id", (req, res) => {
     const id = Number(req.params.id);
 
     const index = books.findIndex(book => book.id === id);
 
-    if (!Number.isInteger(id) || index === -1) {
+    if (index === -1) {
         return res.status(404).json({
             message: "Book not found"
         });
@@ -168,7 +168,7 @@ app.delete("/api/books/:id", (req, res) => {
     });
 });
 
-// Handle invalid JSON bodies
+// Handle invalid JSON
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
         return res.status(400).json({
@@ -181,5 +181,5 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Library API running at http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
 });
